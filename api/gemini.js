@@ -17,7 +17,7 @@ export default async function handler(req, res) {
     });
 
     const data = await response.json();
-    const reply = data?.contents?.[0]?.parts?.[0]?.text || "Sem resposta";
+    const reply = data?.candidates?.[0]?.content || "Sem resposta";
 
     res.status(200).json({ reply });
   } catch (error) {
