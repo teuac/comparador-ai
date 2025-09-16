@@ -9,7 +9,7 @@ export default async function handler(req, res) {
 
   try {
     // Chamada ao Gemini (endpoint exemplo)
-    const response = await fetch("https://api.gemini.google.com/v1/complete", {
+    const response = await fetch("https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent", {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
