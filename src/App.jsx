@@ -1,11 +1,8 @@
-// src/App.jsx
-
 import React, { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { FiSend } from 'react-icons/fi';
-import IconeAC from './assets/iconeAC.jpg'; // Importando o ícone
+import IconeAC from './assets/iconeAC.jpg';
 
-// Componente indicador de digitação
 const TypingIndicator = () => (
   <motion.div
     initial={{ opacity: 0, y: 10 }}
@@ -36,37 +33,41 @@ function App() {
   const [isLoading, setIsLoading] = useState(false);
   const messagesEndRef = useRef(null);
 
-  // Scroll automático
-  const scrollToBottom = () => {
-    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
-  };
+  const scrollToBottom = () => messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
 
-  useEffect(() => {
-    scrollToBottom();
-  }, [messages, isLoading]);
+  useEffect(() => scrollToBottom(), [messages, isLoading]);
 
-  const handleSendMessage = () => {
-    if (inputMessage.trim() === '' || isLoading) return;
+  const handleSendMessage = async () => {
+    if (!inputMessage.trim() || isLoading) return;
 
     const newUserMessage = { id: Date.now(), text: inputMessage, sender: 'user' };
     setMessages(prev => [...prev, newUserMessage]);
     setInputMessage('');
     setIsLoading(true);
 
-    setTimeout(() => {
-      const aiResponse = {
-        id: Date.now() + 1,
-        text: `Recebi sua mensagem: "${newUserMessage.text}". Em breve, estarei conectado à IA para dar respostas reais.`,
-        sender: 'ai'
-      };
+    try {
+      const res = await fetch("/api/gemini", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ message: newUserMessage.text })
+      });
+
+      const data = await res.json();
+      const aiResponse = { id: Date.now() + 1, text: data.reply, sender: 'ai' };
       setMessages(prev => [...prev, aiResponse]);
-      setIsLoading(false);
-    }, 2000);
+
+    } catch (err) {
+      console.error(err);
+      setMessages(prev => [...prev, { id: Date.now() + 1, text: "Erro ao se conectar com o Gemini.", sender: 'ai' }]);
+    }
+
+    setIsLoading(false);
   };
 
   return (
     <div className="flex h-screen w-full bg-ac-cinza justify-center items-center font-sans">
       <div className="flex flex-col w-full max-w-2xl h-full md:h-[90vh] md:max-h-[700px] bg-white shadow-2xl rounded-lg overflow-hidden">
+        
         {/* Cabeçalho */}
         <div className="bg-ac-azul text-white p-4 flex items-center shadow-md z-10">
           <img src={IconeAC} alt="AC" className="w-8 h-8 mr-3 rounded-full object-cover" />
@@ -80,23 +81,23 @@ function App() {
         <div className="flex-1 p-6 overflow-y-auto bg-gray-50">
           <div className="space-y-6">
             <AnimatePresence>
-              {messages.map((message) => (
+              {messages.map(msg => (
                 <motion.div
-                  key={message.id}
+                  key={msg.id}
                   layout
                   initial={{ opacity: 0, scale: 0.8, y: 50 }}
                   animate={{ opacity: 1, scale: 1, y: 0 }}
                   exit={{ opacity: 0, scale: 0.8 }}
                   transition={{ duration: 0.3, ease: 'easeOut' }}
-                  className={`flex items-end gap-3 ${message.sender === 'user' ? 'justify-end' : 'justify-start'}`}
+                  className={`flex items-end gap-3 ${msg.sender === 'user' ? 'justify-end' : 'justify-start'}`}
                 >
-                  {message.sender === 'ai' && (
+                  {msg.sender === 'ai' && (
                     <div className="w-8 h-8 rounded-full bg-ac-azul flex items-center justify-center text-ac-amarelo font-bold text-lg flex-shrink-0">
                       A
                     </div>
                   )}
-                  <div className={`px-4 py-3 rounded-2xl max-w-md md:max-w-lg shadow-md ${message.sender === 'user' ? 'bg-ac-amarelo text-ac-azul rounded-br-none' : 'bg-white text-gray-800 rounded-bl-none'}`}>
-                    <p className="whitespace-pre-wrap">{message.text}</p>
+                  <div className={`px-4 py-3 rounded-2xl max-w-md md:max-w-lg shadow-md ${msg.sender === 'user' ? 'bg-ac-amarelo text-ac-azul rounded-br-none' : 'bg-white text-gray-800 rounded-bl-none'}`}>
+                    <p className="whitespace-pre-wrap">{msg.text}</p>
                   </div>
                 </motion.div>
               ))}
@@ -114,8 +115,8 @@ function App() {
               className="flex-1 p-3 border border-gray-300 rounded-full focus:outline-none focus:ring-2 focus:ring-ac-azul transition-shadow"
               placeholder="Digite sua cotação aqui..."
               value={inputMessage}
-              onChange={(e) => setInputMessage(e.target.value)}
-              onKeyPress={(e) => { if (e.key === 'Enter') handleSendMessage(); }}
+              onChange={e => setInputMessage(e.target.value)}
+              onKeyPress={e => { if (e.key === 'Enter') handleSendMessage(); }}
               disabled={isLoading}
             />
             <motion.button
